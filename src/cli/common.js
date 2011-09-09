@@ -8,7 +8,7 @@ function cli(api){
     //-------------------------------------------------------------------------
     // Helper functions
     //-------------------------------------------------------------------------
-    
+
     /**
      * Returns an array of messages for a particular type.
      * @param messages {Array} Array of CSS Lint messages.
@@ -18,7 +18,7 @@ function cli(api){
     function pluckByType(messages, type){
         return messages.filter(function(message) {
             return message.type === type;
-        });        
+        });
     }
 
     /**
@@ -28,14 +28,14 @@ function cli(api){
      */
     function gatherRules(options){
         var ruleset;
-        
+
         if (options.rules){
             ruleset = {};
             options.rules.split(",").forEach(function(value){
                 ruleset[value] = 1;
             });
         }
-        
+
         return ruleset;
     }
 
@@ -60,6 +60,7 @@ function cli(api){
     function processFile(filename, options) {
         var input = api.readFile(filename),
             result = CSSLint.verify(input, gatherRules(options)),
+            warnAsError = options['warnings-as-errors'] || false,
             formatId = options.format || "text",
             messages = result.messages || [],
             exitCode = 0;
@@ -70,11 +71,11 @@ function cli(api){
         } else {
             api.print(CSSLint.getFormatter(formatId).formatResults(result, filename, formatId));
 
-            if (messages.length > 0 && pluckByType(messages, "error").length > 0) {
+            if (messages.length > 0 && (pluckByType(messages, "error").length > 0 || warnAsError)) {
                 exitCode = 1;
             }
         }
-        
+
         return exitCode;
     }
 
@@ -91,6 +92,7 @@ function cli(api){
             "  --format=<format>      Indicate which format to use for output.",
             "  --list-rules           Outputs all of the rules available.",
             "  --rules=<rule[,rule]+> Indicate which rules to include.",
+            "  --warnings-as-errors   Treat warnings as errors.",
             "  --version              Outputs the current version number."
         ].join("\n") + "\n");
     }
@@ -106,17 +108,17 @@ function cli(api){
             formatId = options.format || "text",
             formatter,
             output;
-            
+
         if (!files.length) {
             api.print("csslint: No files specified.");
             exitCode = 1;
         } else {
             if (!CSSLint.hasFormat(formatId)){
                 api.print("csslint: Unknown format '" + formatId + "'. Cannot proceed.");
-                exitCode = 1; 
+                exitCode = 1;
             } else {
                 formatter = CSSLint.getFormatter(formatId);
-                
+
                 output = formatter.startFormat();
                 if (output){
                     api.print(output);
@@ -129,7 +131,7 @@ function cli(api){
                         processFile(file,options);
                     }
                 });
-                
+
                 output = formatter.endFormat();
                 if (output){
                     api.print(output);
@@ -137,7 +139,7 @@ function cli(api){
             }
         }
         return exitCode;
-    }    
+    }
 
     //-----------------------------------------------------------------------------
     // Process command line
@@ -153,14 +155,14 @@ function cli(api){
         if (arg.indexOf("--") === 0){
             argName = arg.substring(2);
             options[argName] = true;
-            
+
             if (argName.indexOf("rules=") > -1){
                 options.rules = argName.substring(argName.indexOf("=") + 1);
             } else if (argName.indexOf("format=") > -1) {
                 options.format = argName.substring(argName.indexOf("=") + 1);
             }
         } else {
-            
+
             //see if it's a directory or a file
             if (api.isDirectory(arg)){
                 files = files.concat(api.getFiles(arg));
